@@ -10,7 +10,7 @@ function createCall(phoneNumber) {
   client.calls.create({
     url: 'http://demo.twilio.com/docs/voice.xml',
     to: phoneNumber,
-    from: '+17623202995',
+    from: process.env.TWILIO_PHONE_NUMBER,
   });
 }
 
