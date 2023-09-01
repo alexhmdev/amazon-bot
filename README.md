@@ -26,14 +26,10 @@ npm install
 TWILIO_ACCOUNT_SID=YOUR_TWILIO_ACCOUNT_SID
 TWILIO_AUTH_TOKEN=YOUR_TWILIO_AUTH_TOKEN
 PHONE_TO_NOTIFY=YOUR_PHONE_NUMBER
+PRODUCT_ID=ID_FROM_AMAZON
 ```
 
-- Add the product id in the index.js file (the id is the part of the url after /dp/ e.g. https://www.amazon.com.mx/dp/B0BJT88GLJ)
-
-```javascript
-// Replace with the product ID of the product you want to check
-checkProductAvailability('B0BJT88GLJ');
-```
+- Add the product id in the .env file or paste the url at the beginning (the id is the part of the url after /dp/ e.g. https://www.amazon.com.mx/dp/B0BJT88GLJ)
 
 ## Usage
 
