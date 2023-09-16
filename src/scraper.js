@@ -3,7 +3,7 @@ import { load } from 'cheerio';
 import { outro, spinner } from '@clack/prompts';
 import open from 'open';
 import pico from 'picocolors';
-import createCall from './phoneCall.cjs';
+import { createCall, createMessage } from './twilio.cjs';
 const webURL = 'https://www.amazon.com.mx/dp/'; // Replace with the URL of the product you want to check
 const s = spinner();
 export async function checkProductAvailability(
@@ -40,17 +40,24 @@ export async function checkProductAvailability(
           : buyBox.length > 0
           ? 'Buy Box'
           : 'Unknown';
-      s.stop(
-        pico.blue(
-          `Product is available for purchase trough ${optionFind}! Opening browser...`
-        )
-      );
+
       // Open chrome with the product URL
       await open(productURL);
       // Make a phone call to the number specified in the .env file
       createCall(
         process.env.PHONE_TO_NOTIFY,
         `Product ${productName} is available for purchase trough ${optionFind} go and buy it!`
+      );
+      // Send a whatsapp message to the number specified in the .env file
+      createMessage(
+        process.env.PHONE_TO_NOTIFY,
+        `Product ${productName} is available for purchase trough ${optionFind} go and buy it!
+        ${productURL}`
+      );
+      s.stop(
+        pico.blue(
+          `Product is available for purchase trough ${optionFind}! Opening browser...`
+        )
       );
     } else {
       s.stop(
