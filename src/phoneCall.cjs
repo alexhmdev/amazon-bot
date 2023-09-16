@@ -5,9 +5,9 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = require('twilio')(accountSid, authToken);
 
-function createCall(phoneNumber) {
+function createCall(phoneNumber, message) {
   client.calls.create({
-    url: 'http://demo.twilio.com/docs/voice.xml',
+    twiml: `<Response><Say>${message}</Say></Response>`,
     to: phoneNumber,
     from: process.env.TWILIO_PHONE_NUMBER,
   });
