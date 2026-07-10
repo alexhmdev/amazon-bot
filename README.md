@@ -9,6 +9,7 @@ This bot is **ONLY FOR LEARNING PURPOSES**
 - Watch **multiple products** from a single `products.json` watchlist
 - **Custom notification message per product** with placeholders
 - WhatsApp notifications from **your own phone number** using [whatsapp-web.js](https://wwebjs.dev/) — no Twilio account needed
+- Notify a **WhatsApp group** instead of a single number, optionally **@-mentioning everyone** in the group per product
 - Captcha/block detection with automatic back-off, plus jittered sequential requests to avoid getting blocked
 - Opens the product page in your browser when it becomes available ([open](https://www.npmjs.com/package/open))
 
@@ -27,6 +28,8 @@ npm install
 
 ```sh
 PHONE_TO_NOTIFY=+5215512345678
+# optional: notify a group instead (exact group name, you must be a member)
+# NOTIFY_GROUP=Pokemon Hunters
 ```
 
 - Copy `products.example.json` to `products.json` and add your products:
@@ -56,6 +59,7 @@ PHONE_TO_NOTIFY=+5215512345678
 | `label` | no | Friendly name used in logs and messages (defaults to the ASIN) |
 | `message` | no | Custom notification text for this product |
 | `marketplace` | no | Overrides `settings.marketplace` for this product (e.g. `amazon.com`) |
+| `tagEveryone` | no | When notifying a group, @-mention every participant for this product (defaults to `settings.tagEveryone`) |
 
 ### Message placeholders
 
@@ -72,6 +76,7 @@ Use these inside `message` and they are replaced when the notification is sent:
 - `checkIntervalMinutes` — minutes between check rounds (keep it reasonable or Amazon will block you)
 - `marketplace` — default Amazon domain, e.g. `amazon.com.mx` or `amazon.com`
 - `openBrowser` — open the product page automatically when it's available
+- `tagEveryone` — default for @-mentioning all group participants when a product is found (only applies when `NOTIFY_GROUP` is set; ignored for direct messages)
 
 ## Usage
 

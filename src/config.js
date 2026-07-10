@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS = {
   checkIntervalMinutes: 5,
   marketplace: 'amazon.com.mx',
   openBrowser: true,
+  tagEveryone: false,
 };
 
 export const DEFAULT_MESSAGE =
@@ -59,6 +60,7 @@ export function loadConfig() {
       label: product.label ?? id,
       marketplace: product.marketplace ?? settings.marketplace,
       message: product.message ?? DEFAULT_MESSAGE,
+      tagEveryone: product.tagEveryone ?? settings.tagEveryone,
     };
   });
 

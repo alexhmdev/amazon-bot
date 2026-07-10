@@ -53,7 +53,7 @@ export async function watchProducts(config, notify) {
           if (openBrowser) {
             await open(result.url).catch(() => {});
           }
-          await notify(message);
+          await notify(message, { tagEveryone: product.tagEveryone });
           pending.splice(i, 1);
         } else {
           console.log(

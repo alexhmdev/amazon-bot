@@ -21,7 +21,7 @@ for (const product of config.products) {
   console.log(pico.dim(`  • ${product.label} (${product.id})`));
 }
 
-await initWhatsApp(process.env.PHONE_TO_NOTIFY);
+await initWhatsApp(process.env.PHONE_TO_NOTIFY, process.env.NOTIFY_GROUP);
 await sendWhatsApp(
   `🤖 Amazon bot started. Watching ${config.products.length} product(s):\n${config.products
     .map((product) => `• ${product.label}`)
