@@ -17,8 +17,9 @@ if (!existsSync('.env')) {
 
 config();
 
-// ask for the WhatsApp number to notify if it's not in the .env file
-if (!process.env.PHONE_TO_NOTIFY) {
+// ask for the WhatsApp number to notify if no destination is configured
+// (NOTIFY_GROUP alone is a valid setup — group-only notifications)
+if (!process.env.PHONE_TO_NOTIFY && !process.env.NOTIFY_GROUP) {
   const phone = await text({
     message:
       'Enter the WhatsApp number to notify (with country code, e.g. +5215512345678)',

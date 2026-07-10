@@ -9,7 +9,7 @@ This bot is **ONLY FOR LEARNING PURPOSES**
 - Watch **multiple products** from a single `products.json` watchlist
 - **Custom notification message per product** with placeholders
 - WhatsApp notifications from **your own phone number** using [whatsapp-web.js](https://wwebjs.dev/) — no Twilio account needed
-- Notify a **WhatsApp group** instead of a single number, optionally **@-mentioning everyone** in the group per product
+- Notify a direct number, a **WhatsApp group**, or **both at once**, optionally **@-mentioning everyone** in the group per product
 - Captcha/block detection with automatic back-off, plus jittered sequential requests to avoid getting blocked
 - Opens the product page in your browser when it becomes available ([open](https://www.npmjs.com/package/open))
 
@@ -24,12 +24,13 @@ cd amazon-bot
 npm install
 ```
 
-- Copy `.env.example` to `.env` and set the WhatsApp number that should receive the notifications (usually your own), including the country code:
+- Copy `.env.example` to `.env` and set where notifications should go. You can set one or both — every notification is sent to all configured destinations:
 
 ```sh
+# direct message (your own number, with country code)
 PHONE_TO_NOTIFY=+5215512345678
-# optional: notify a group instead (exact group name, you must be a member)
-# NOTIFY_GROUP=Pokemon Hunters
+# and/or a group (exact group name, you must be a member)
+NOTIFY_GROUP=Pokemon Hunters
 ```
 
 - Copy `products.example.json` to `products.json` and add your products:
