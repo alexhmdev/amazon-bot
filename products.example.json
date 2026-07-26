@@ -2,6 +2,7 @@
   "settings": {
     "checkIntervalMinutes": 5,
     "marketplace": "amazon.com.mx",
+    "onlyAmazon": true,
     "openBrowser": true,
     "tagEveryone": false
   },

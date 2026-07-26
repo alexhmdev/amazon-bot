@@ -6,6 +6,7 @@ const CONFIG_FILE = 'products.json';
 const DEFAULT_SETTINGS = {
   checkIntervalMinutes: 5,
   marketplace: 'amazon.com.mx',
+  onlyAmazon: true,
   openBrowser: true,
   tagEveryone: false,
 };
@@ -60,6 +61,7 @@ export function loadConfig() {
       label: product.label ?? id,
       marketplace: product.marketplace ?? settings.marketplace,
       message: product.message ?? DEFAULT_MESSAGE,
+      onlyAmazon: product.onlyAmazon ?? settings.onlyAmazon,
       tagEveryone: product.tagEveryone ?? settings.tagEveryone,
     };
   });

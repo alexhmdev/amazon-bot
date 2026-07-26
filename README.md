@@ -10,6 +10,7 @@ This bot is **ONLY FOR LEARNING PURPOSES**
 - **Custom notification message per product** with placeholders
 - WhatsApp notifications from **your own phone number** using [whatsapp-web.js](https://wwebjs.dev/) — no Twilio account needed
 - Notify a direct number, a **WhatsApp group**, or **both at once**, optionally **@-mentioning everyone** in the group per product
+- **Reseller filter**: only notifies when the product is sold by Amazon itself, so you don't accidentally buy from a third-party reseller (can be turned off)
 - Captcha/block detection with automatic back-off, plus jittered sequential requests to avoid getting blocked
 - Opens the product page in your browser when it becomes available ([open](https://www.npmjs.com/package/open))
 
@@ -61,6 +62,7 @@ NOTIFY_GROUP=Pokemon Hunters
 | `message` | no | Custom notification text for this product |
 | `marketplace` | no | Overrides `settings.marketplace` for this product (e.g. `amazon.com`) |
 | `tagEveryone` | no | When notifying a group, @-mention every participant for this product (defaults to `settings.tagEveryone`) |
+| `onlyAmazon` | no | Only notify when the buy box seller is Amazon itself — third-party resellers (including "Fulfilled by Amazon" ones) are ignored (defaults to `settings.onlyAmazon`, which is `true`) |
 
 ### Message placeholders
 
@@ -71,11 +73,13 @@ Use these inside `message` and they are replaced when the notification is sent:
 - `{method}` — how it can be bought (`Add to Cart`, `Buy Now` or `Buy Box`)
 - `{url}` — the product URL
 - `{id}` — the ASIN
+- `{seller}` — the buy box seller text scraped from Amazon (empty if it couldn't be determined)
 
 ### Settings
 
 - `checkIntervalMinutes` — minutes between check rounds (keep it reasonable or Amazon will block you)
 - `marketplace` — default Amazon domain, e.g. `amazon.com.mx` or `amazon.com`
+- `onlyAmazon` — default for the reseller filter (`true`). When on, a product whose buy box is held by a third-party seller is treated as not available and keeps being watched. If the seller can't be determined (e.g. only the "See All Buying Options" button is present), the check is conservative and skips the notification too. Set to `false` (globally or per product) to be notified about any seller
 - `openBrowser` — open the product page automatically when it's available
 - `tagEveryone` — default for @-mentioning all group participants when a product is found (only applies when `NOTIFY_GROUP` is set; ignored for direct messages)
 

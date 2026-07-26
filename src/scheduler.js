@@ -14,8 +14,10 @@ export function renderMessage(template, context) {
 }
 
 /**
- * Checks every product in the watchlist sequentially, notifies (once) when
- * one becomes available, and keeps watching the rest until all are found.
+ * Checks every product in the watchlist sequentially and notifies every
+ * round it's available (stock is limited, so units restock and sell out
+ * repeatedly — products are never removed after a notification, the bot
+ * keeps watching and alerting for as long as it runs).
  */
 export async function watchProducts(config, notify) {
   const pending = [...config.products];
@@ -37,6 +39,18 @@ export async function watchProducts(config, notify) {
               `[${timestamp}] ⛔ Amazon served a captcha while checking ${product.label}. Backing off...`
             )
           );
+        } else if (
+          result.status === 'available' &&
+          product.onlyAmazon &&
+          !result.soldByAmazon
+        ) {
+          console.log(
+            pico.yellow(
+              `[${timestamp}] 🏪 ${product.label} is available but sold by ${
+                result.seller ?? 'an unknown seller'
+              } (not Amazon) — no alert sent, still watching for Amazon stock.`
+            )
+          );
         } else if (result.status === 'available') {
           const message = renderMessage(product.message, {
             label: product.label,
@@ -44,6 +58,7 @@ export async function watchProducts(config, notify) {
             method: result.method,
             url: result.url,
             id: product.id,
+            seller: result.seller ?? '',
           });
           console.log(
             pico.green(
@@ -54,7 +69,6 @@ export async function watchProducts(config, notify) {
             await open(result.url).catch(() => {});
           }
           await notify(message, { tagEveryone: product.tagEveryone });
-          pending.splice(i, 1);
         } else {
           console.log(
             pico.yellow(
@@ -65,7 +79,7 @@ export async function watchProducts(config, notify) {
       } catch (error) {
         console.log(
           pico.red(
-            `[${timestamp}] Error checking ${product.label}: ${error.message}`
+            `[${timestamp}] Error checking ${product.label}: ${error.stack || error}`
           )
         );
       }

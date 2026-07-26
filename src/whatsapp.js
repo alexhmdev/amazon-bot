@@ -28,6 +28,14 @@ export async function initWhatsApp(phoneToNotify, groupName) {
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     },
+    // Pin a known-working WhatsApp Web build instead of always fetching the
+    // live version — WA ships breaking internal changes faster than
+    // whatsapp-web.js can track them, which crashes getChats()/evaluate calls.
+    webVersionCache: {
+      type: 'remote',
+      remotePath:
+        'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
+    },
   });
 
   await new Promise((resolve, reject) => {
@@ -66,15 +74,31 @@ export async function initWhatsApp(phoneToNotify, groupName) {
   }
 
   if (groupName) {
-    const chats = await client.getChats();
-    const group = chats.find(
-      (chat) =>
-        chat.isGroup &&
-        chat.name.toLowerCase() === groupName.toLowerCase().trim()
+    // client.getChats() calls chat.serialize() on every chat via Promise.all —
+    // one malformed chat (e.g. a channel/newsletter entry) throws and kills the
+    // whole batch. Pull raw id/name straight from the Store instead, skipping
+    // chats that can't be read, so a single bad chat doesn't block group lookup.
+    const groups = await client.pupPage.evaluate(() => {
+      const chats = window.require('WAWebCollections').Chat.getModelsArray();
+      const results = [];
+      for (const chat of chats) {
+        if (!chat.groupMetadata) continue;
+        try {
+          results.push({
+            id: chat.id._serialized,
+            name: chat.name || chat.formattedTitle || '',
+          });
+        } catch {
+          // unreadable chat, skip it
+        }
+      }
+      return results;
+    });
+    const group = groups.find(
+      (chat) => chat.name.toLowerCase() === groupName.toLowerCase().trim()
     );
     if (!group) {
-      const available = chats
-        .filter((chat) => chat.isGroup)
+      const available = groups
         .map((chat) => `  • ${chat.name}`)
         .join('\n');
       throw new Error(
@@ -82,7 +106,7 @@ export async function initWhatsApp(phoneToNotify, groupName) {
       );
     }
     targets.push({
-      chatId: group.id._serialized,
+      chatId: group.id,
       isGroup: true,
       description: `group "${group.name}"`,
     });
@@ -108,19 +132,73 @@ export async function sendWhatsApp(message, { tagEveryone = false } = {}) {
   }
 
   for (const target of targets) {
-    if (tagEveryone && target.isGroup) {
-      const chat = await client.getChatById(target.chatId);
-      const mentions = chat.participants.map(
-        (participant) => participant.id._serialized
+    try {
+      if (tagEveryone && target.isGroup) {
+        // getChatById()'s model-building (serialize() + LID-to-phone
+        // migration + a live groupMetadata network refresh) crashes on some
+        // accounts — same failure class as the getChats() bug worked around
+        // above. Pull participants straight from the Store instead.
+        const selfId = client.info.wid._serialized;
+        const { mentions, tags } = await client.pupPage.evaluate(
+          (chatId, selfId) => {
+            const chatWid = window.require('WAWebWidFactory').createWid(chatId);
+            const chat = window.require('WAWebCollections').Chat.get(chatWid);
+            const participants =
+              chat?.groupMetadata?.participants?.getModelsArray() ?? [];
+
+            // Own id and participant ids can each be in either phone
+            // (@c.us) or WhatsApp's newer privacy-number (@lid) form, so a
+            // raw string compare can miss a self-match. Normalize both sides
+            // with toPn (lid -> phone) and compare every combination.
+            const { toPn } = window.require('WAWebLidMigrationUtils');
+            const idVariants = (wid) => {
+              const variants = new Set([wid._serialized]);
+              try {
+                const pn = toPn(wid);
+                if (pn) variants.add(pn._serialized);
+              } catch {
+                // no phone-number mapping available, raw id is all we have
+              }
+              return variants;
+            };
+            const selfWid = window.require('WAWebWidFactory').createWid(selfId);
+            const selfVariants = idVariants(selfWid);
+            const others = participants.filter((participant) => {
+              const variants = idVariants(participant.id);
+              return ![...variants].some((v) => selfVariants.has(v));
+            });
+            return {
+              mentions: others.map(
+                (participant) => participant.id._serialized
+              ),
+              tags: others
+                .map((participant) => `@${participant.id.user}`)
+                .join(' '),
+            };
+          },
+          target.chatId,
+          selfId
+        );
+        await client.sendMessage(target.chatId, `${message}\n\n${tags}`, {
+          mentions,
+        });
+      } else {
+        await client.sendMessage(target.chatId, message);
+      }
+    } catch (error) {
+      console.log(
+        pico.red(
+          `Failed to notify ${target.description}: ${error.stack || error}`
+        )
       );
-      const tags = chat.participants
-        .map((participant) => `@${participant.id.user}`)
-        .join(' ');
-      await client.sendMessage(target.chatId, `${message}\n\n${tags}`, {
-        mentions,
-      });
-    } else {
-      await client.sendMessage(target.chatId, message);
+      if (tagEveryone && target.isGroup) {
+        console.log(pico.yellow(`Retrying ${target.description} without mentions...`));
+        await client.sendMessage(target.chatId, message).catch((fallbackError) => {
+          console.log(
+            pico.red(`Fallback send to ${target.description} also failed: ${fallbackError.stack || fallbackError}`)
+          );
+        });
+      }
     }
   }
 }
