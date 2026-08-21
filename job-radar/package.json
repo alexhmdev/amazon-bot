@@ -1,0 +1,19 @@
+{
+  "name": "job-radar",
+  "version": "1.0.0",
+  "description": "Radar de vacantes remotas: agrega ofertas de APIs publicas, las puntua contra tu perfil y te avisa por WhatsApp",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "search": "node src/index.js search",
+    "list": "node src/index.js list",
+    "report": "node src/index.js report",
+    "stats": "node src/index.js stats",
+    "help": "node src/index.js help"
+  },
+  "license": "MIT"
+}

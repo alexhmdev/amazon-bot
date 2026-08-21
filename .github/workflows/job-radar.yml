@@ -1,0 +1,50 @@
+name: Job Radar
+
+# Busca vacantes dos veces al día y avisa por WhatsApp las que superan el corte.
+# Requiere estos secrets en el repo (Settings → Secrets → Actions):
+#   PROFILE_JSON  -> el contenido de job-radar/profile.json (así no vive en el repo)
+#   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER, PHONE_TO_NOTIFY
+on:
+  schedule:
+    - cron: '0 15,23 * * 1-5' # 09:00 y 17:00 en CDMX (UTC-6), de lunes a viernes
+  workflow_dispatch:
+
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Recupera lo ya visto para no volver a avisar de la misma vacante.
+      - name: Restaurar historial
+        uses: actions/cache@v4
+        with:
+          path: job-radar/data
+          key: job-radar-data-${{ github.run_id }}
+          restore-keys: job-radar-data-
+
+      - name: Escribir perfil
+        run: printf '%s' "$PROFILE_JSON" > job-radar/profile.json
+        env:
+          PROFILE_JSON: ${{ secrets.PROFILE_JSON }}
+
+      - name: Buscar vacantes
+        working-directory: job-radar
+        run: node src/index.js search --notify
+        env:
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_WHATSAPP_NUMBER: ${{ secrets.TWILIO_WHATSAPP_NUMBER }}
+          PHONE_TO_NOTIFY: ${{ secrets.PHONE_TO_NOTIFY }}
+          NOTIFY_MIN_SCORE: '70'
+
+      - name: Publicar reporte
+        uses: actions/upload-artifact@v4
+        with:
+          name: job-radar-report
+          path: job-radar/report.html
+          retention-days: 14

@@ -45,3 +45,21 @@ npm run dev
 MIT
 
 **Free Software, Hell Yeah!**
+
+---
+
+## Job Radar 🛰
+
+Este repo también incluye [`job-radar/`](./job-radar): un buscador de vacantes
+remotas que agrega ofertas de APIs públicas (Jobicy, We Work Remotely, Hacker
+News "Who is hiring", Remotive, Remote OK, Himalayas y bolsas oficiales de
+empresa), las puntúa contra tu perfil y te avisa por WhatsApp con la misma
+cuenta de Twilio que usa este bot.
+
+```sh
+cd job-radar
+cp profile.example.json profile.json
+node src/index.js search
+```
+
+Ver [job-radar/README.md](./job-radar/README.md) para la configuración completa.
