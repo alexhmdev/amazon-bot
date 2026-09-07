@@ -1,0 +1,23 @@
+{
+  "settings": {
+    "checkIntervalMinutes": 5,
+    "marketplace": "amazon.com.mx",
+    "onlyAmazon": true,
+    "openBrowser": true,
+    "tagEveryone": false
+  },
+  "products": [
+    {
+      "id": "B0CCSQXHJ2",
+      "label": "PS5 Spider-Man 2 Bundle",
+      "message": "🕷️ {label} is back in stock via {method}!\nGo get it: {url}",
+      "tagEveryone": true
+    },
+    {
+      "id": "B07W7V4WMG",
+      "label": "Echo Dot",
+      "marketplace": "amazon.com",
+      "message": "🔊 {name} is available ({method}) — {url}"
+    }
+  ]
+}

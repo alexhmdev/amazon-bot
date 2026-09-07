@@ -1,82 +1,103 @@
 import axios from 'axios';
 import { load } from 'cheerio';
-import { outro, spinner } from '@clack/prompts';
-import open from 'open';
-import pico from 'picocolors';
-import { createCall, createMessage } from './twilio.cjs';
-const webURL = 'https://www.amazon.com.mx/dp/'; // Replace with the URL of the product you want to check
-const s = spinner();
-export async function checkProductAvailability(
-  productID,
-  minutuesToCheckAgain = 1
-) {
-  try {
-    // axios config to avoid being blocked by amazon
-    axios.defaults.headers.common['User-Agent'] =
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36';
-    // Show a spinner while the product page is being downloaded
-    s.start('Checking product availability...');
-    const productURL = webURL + productID;
-    console.log(productURL);
-    const response = await axios.get(productURL);
-    const $ = load(response.data);
 
-    // Look for the "Add to Cart" or "Buy Now" button on the product page
-    const addToCartButton = $('#add-to-cart-button');
-    const buyNowButton = $('#buy-now-button');
-    const buyBox = $('#buybox-see-all-buying-choices');
-    const productName = $('#productTitle').text().trim();
+const USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-    if (
-      addToCartButton.length > 0 ||
-      buyNowButton.length > 0 ||
-      buyBox.length > 0
-    ) {
-      const optionFind =
-        addToCartButton.length > 0
-          ? 'Add to Cart'
-          : buyNowButton.length > 0
-          ? 'Buy Now'
-          : buyBox.length > 0
-          ? 'Buy Box'
-          : 'Unknown';
-
-      // Open chrome with the product URL
-      await open(productURL);
-      // Make a phone call to the number specified in the .env file
-      createCall(
-        process.env.PHONE_TO_NOTIFY,
-        `Product ${productName} is available for purchase trough ${optionFind} go and buy it!`
-      );
-      // Send a whatsapp message to the number specified in the .env file
-      createMessage(
-        process.env.PHONE_TO_NOTIFY,
-        `Product ${productName} is available for purchase trough ${optionFind} go and buy it!
-        ${productURL}`
-      );
-      s.stop(
-        pico.blue(
-          `Product is available for purchase trough ${optionFind}! Opening browser...`
-        )
-      );
-    } else {
-      s.stop(
-        pico.yellow(
-          `🫥 Product is currently not available for purchase. \n Checking again in ${minutuesToCheckAgain} minutes...`
-        )
-      );
-      // Check again in 1 minutes
-      setTimeout(
-        () => checkProductAvailability(productID, minutuesToCheckAgain),
-        minutuesToCheckAgain * 60 * 1000
-      );
-    }
-  } catch (error) {
-    console.error('Error:', error.message);
-    s.stop('An error occurred. Retrying in 5 minutes...');
-    setTimeout(
-      () => checkProductAvailability(productID, minutuesToCheckAgain),
-      5 * 60 * 1000
-    );
+// Who is selling in the buy box. The classic layout puts "Vendido y enviado
+// por Amazon" / "Sold by ..." in #merchant-info; the newer layout splits it
+// into offer-display feature rows. Third-party sellers link to their seller
+// profile — Amazon itself never does — so a seller link always means resale,
+// even when the text mentions Amazon ("Vendido por X y enviado por Amazon"
+// is Fulfilled-by-Amazon resale, not Amazon as the seller).
+function parseSeller($) {
+  const thirdPartyLink = $(
+    '#sellerProfileTriggerId, #merchant-info a[href*="seller="], #merchantInfoFeature_feature_div a[href*="seller="]'
+  ).first();
+  if (thirdPartyLink.length > 0) {
+    return { seller: thirdPartyLink.text().trim() || null, soldByAmazon: false };
   }
+
+  // Newer layout: the seller name lives in its own span, next to a label
+  // like "Vendedor" / "Remitente / Vendedor" / "Sold by" — match the name
+  // alone instead of guessing every label wording.
+  const merchantName = $(
+    '#merchantInfoFeature_feature_div .offer-display-feature-text-message'
+  )
+    .first()
+    .text()
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (merchantName) {
+    return { seller: merchantName, soldByAmazon: /^amazon\b/i.test(merchantName) };
+  }
+
+  const text = (
+    $('#merchant-info').text().trim() ||
+    $('#merchantInfoFeature_feature_div').text().trim()
+  ).replace(/\s+/g, ' ');
+  if (!text) {
+    return { seller: null, soldByAmazon: false };
+  }
+
+  const soldByAmazon =
+    /^amazon\b/i.test(text) ||
+    /(?:vendido(?: y enviado)? por|vendedor|sold by|seller|ships from and sold by)\s*:?\s*amazon\b/i.test(
+      text
+    );
+  return { seller: text, soldByAmazon };
+}
+
+/**
+ * Checks a single product page and reports its state without side effects.
+ * Returns { status: 'available' | 'unavailable' | 'blocked', name, method,
+ * url, seller, soldByAmazon }. soldByAmazon is only true when the buy box
+ * seller is confirmed to be Amazon itself — unknown sellers count as resale.
+ */
+export async function checkProduct(product) {
+  const url = `https://www.${product.marketplace}/dp/${product.id}`;
+  const response = await axios.get(url, {
+    headers: {
+      'User-Agent': USER_AGENT,
+      'Accept-Language': 'es-MX,es;q=0.9,en;q=0.8',
+    },
+  });
+  const $ = load(response.data);
+
+  // Amazon serves captcha pages with HTTP 200 — without this check a block
+  // is indistinguishable from "out of stock"
+  const isBlocked =
+    $('form[action*="validateCaptcha"]').length > 0 ||
+    /robot check|captcha/i.test($('title').text());
+  if (isBlocked) {
+    return {
+      status: 'blocked',
+      name: product.label,
+      method: null,
+      url,
+      seller: null,
+      soldByAmazon: false,
+    };
+  }
+
+  const name = $('#productTitle').text().trim() || product.label;
+  const method =
+    $('#add-to-cart-button').length > 0
+      ? 'Add to Cart'
+      : $('#buy-now-button').length > 0
+      ? 'Buy Now'
+      : $('#buybox-see-all-buying-choices').length > 0
+      ? 'Buy Box'
+      : null;
+
+  const { seller, soldByAmazon } = parseSeller($);
+
+  return {
+    status: method ? 'available' : 'unavailable',
+    name,
+    method,
+    url,
+    seller,
+    soldByAmazon,
+  };
 }

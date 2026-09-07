@@ -2,3 +2,8 @@
 node_modules
 .cache
 .env
+# per-user product watchlist (copy products.example.json)
+products.json
+# whatsapp-web.js session data
+.wwebjs_auth
+.wwebjs_cache

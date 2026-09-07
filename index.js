@@ -1,15 +1,34 @@
 import './src/env.js';
-import { checkProductAvailability } from './src/scraper.js';
-import { intro, text } from '@clack/prompts';
+import { intro, outro } from '@clack/prompts';
 import pico from 'picocolors';
-intro('Amazon Product Availability Checker 🤖 1.0.0');
+import { loadConfig } from './src/config.js';
+import {
+  initWhatsApp,
+  sendWhatsApp,
+  destroyWhatsApp,
+} from './src/whatsapp.js';
+import { watchProducts } from './src/scheduler.js';
 
-const minutesToCheckAgain = await text({
-  message: `How often do you want to check the product availability (in minutes)? \n ${pico.yellow(
-    `(if you enter a low value probably amazon will block you, so be careful!`
-  )}`,
-  placeholder: '1',
-});
+intro('Amazon Product Availability Checker 🤖 2.0.0');
 
-// Replace with the product ID of the product you want to check
-checkProductAvailability(process.env.PRODUCT_ID, minutesToCheckAgain);
+const config = loadConfig();
+console.log(
+  pico.blue(
+    `Watching ${config.products.length} product(s) every ${config.settings.checkIntervalMinutes} minute(s):`
+  )
+);
+for (const product of config.products) {
+  console.log(pico.dim(`  • ${product.label} (${product.id})`));
+}
+
+await initWhatsApp(process.env.PHONE_TO_NOTIFY, process.env.NOTIFY_GROUP);
+await sendWhatsApp(
+  `🤖 Amazon bot started. Watching ${config.products.length} product(s):\n${config.products
+    .map((product) => `• ${product.label}`)
+    .join('\n')}`
+);
+
+await watchProducts(config, sendWhatsApp);
+
+outro(pico.green('All products found and notified 🎉'));
+await destroyWhatsApp();
